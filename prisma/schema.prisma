@@ -12,3 +12,86 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum Role {
+  FARMER
+  CONSUMER
+  ADMIN
+}
+
+enum Availability {
+  AVAILABLE_TODAY
+  AVAILABLE_THIS_WEEK
+  OUT_OF_STOCK
+}
+
+enum ContactPreference {
+  CALL
+  WHATSAPP
+  BOTH
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      Role     @default(CONSUMER)
+  createdAt DateTime @default(now())
+
+  // Relations
+  farmerProfile FarmerProfile?
+}
+
+model FarmerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  farmName          String
+  bio               String?
+  phoneNumber       String
+  contactPreference ContactPreference @default(BOTH)
+
+  // Location Data
+  address  String
+  city     String
+  district String
+
+  // Admin fields
+  isVerified Boolean @default(false)
+
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([city, district])
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique // e.g., "Vegetables", "Fruits", "Grains"
+  products Product[]
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  farmerProfileId String
+  farmer          FarmerProfile @relation(fields: [farmerProfileId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  name        String
+  description String?
+  price       String? // String to allow "₹40/kg" or "Negotiable"
+  quantity    String // e.g., "100 kg available"
+
+  availability Availability @default(AVAILABLE_TODAY)
+  isActive     Boolean      @default(true) // For moderation/soft delete
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+}

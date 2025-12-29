@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../utils/tokenUtils.js";
+import { verifyToken } from "../utils/jwtUtil.js";
 
 interface User {
   id: string;

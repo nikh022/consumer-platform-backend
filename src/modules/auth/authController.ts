@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
-import { prisma } from "../config/database.js";
-import { userRepository } from "../user/userRepository.js";
+import { prisma } from "../../config/database.js";
+import { userRepository } from "../../user/userRepository.js";
 import {
   generateToken,
   hashPassword,
   comparePassword,
-} from "../shared/utils/jwtUtil.js";
+} from "../../shared/utils/jwtUtil.js";
 
 const cookieOptions = {
   httpOnly: true,

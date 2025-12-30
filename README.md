@@ -19,6 +19,8 @@ Our vision is to connect farmers directly with consumers to provide fresh, local
 
 ## Run Locally
 
+> 💡 **Quick Start:** See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for a comprehensive setup guide with troubleshooting tips!
+
 Clone the project
 
 ```bash
@@ -39,13 +41,32 @@ Install dependencies
 
 ### Environment Variables
 
-To run this project, you will need to add the following environment variables to your .env file
+Create a `.env` file in the root directory by copying the example file:
 
-`DATABASE_URL`
+```bash
+  cp .env.example .env
+```
 
-`JWT_SECRET`
+Then update the values in `.env` file:
 
-`PORT`
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_SECRET` - Secret key for JWT token generation
+- `PORT` - Server port (default: 3000)
+- `NODE_ENV` - Environment mode (development/production)
+
+### Database Setup
+
+**Option 1: Using Docker (Recommended for local development)**
+
+Start PostgreSQL using Docker Compose:
+
+```bash
+  docker-compose up -d
+```
+
+**Option 2: Using your own PostgreSQL instance**
+
+Make sure PostgreSQL is installed and running, then update `DATABASE_URL` in your `.env` file accordingly.
 
 ### Prisma Setup
 

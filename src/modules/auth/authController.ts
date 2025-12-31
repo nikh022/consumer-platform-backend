@@ -1,11 +1,7 @@
 import type { Request, Response } from "express";
-import { prisma } from "../../config/prisma.js";
+import { authService } from "./authService.js";
 import { userRepository } from "../user/userRepository.js";
-import {
-  generateToken,
-  hashPassword,
-  comparePassword,
-} from "../../shared/utils/jwtUtil.js";
+import { generateToken } from "../../shared/utils/jwtUtil.js";
 
 const cookieOptions = {
   httpOnly: true,
@@ -17,43 +13,13 @@ const cookieOptions = {
 // User registration
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const { email, password, fullName, role } = req.body;
-
-    // Validate input
-    if (!email || !password || !fullName) {
-      res
-        .status(400)
-        .json({ message: "Email, password, and fullName are required" });
-      return;
-    }
-
-    // Check if user already exists
-    const existingUser = await userRepository.findByEmail(email);
-
-    if (existingUser) {
-      res.status(409).json({ message: "User already exists" });
-      return;
-    }
-
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Create user
-    const user = await userRepository.create({
-      email,
-      password: hashedPassword,
-      fullName,
-      role: role || "CONSUMER",
-    });
-
-    // Generate token
+    const user = await authService.register(req.body);
     const token = generateToken(user.id, user.role);
 
     res.cookie("token", token, cookieOptions);
 
     res.status(201).json({
       message: "User registered successfully",
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -61,47 +27,23 @@ export const registerUser = async (req: Request, res: Response) => {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === "USER_ALREADY_EXISTS") {
+      return res.status(409).json({ message: "User already exists" });
+    }
     console.error("Registration error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// User login
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      res.status(400).json({ message: "Email and password are required" });
-      return;
-    }
-
-    // Find user
-    const user = await userRepository.findByEmail(email);
-
-    if (!user) {
-      res.status(401).json({ message: "Invalid email or password" });
-      return;
-    }
-
-    // Compare password
-    const isPasswordValid = await comparePassword(password, user.password);
-
-    if (!isPasswordValid) {
-      res.status(401).json({ message: "Invalid email or password" });
-      return;
-    }
-
-    // Generate token
+    const user = await authService.login(req.body);
     const token = generateToken(user.id, user.role);
 
     res.cookie("token", token, cookieOptions);
-
     res.status(200).json({
       message: "Login successful",
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -109,7 +51,10 @@ export const loginUser = async (req: Request, res: Response) => {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === "INVALID_CREDENTIALS") {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
     console.error("Login error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -117,54 +62,22 @@ export const loginUser = async (req: Request, res: Response) => {
 
 // User logout
 export const logoutUser = (req: Request, res: Response) => {
-  try {
-    res.clearCookie("token", cookieOptions);
-
-    res.status(200).json({ message: "Logout successful" });
-  } catch (error) {
-    console.error("Logout error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
+  res.clearCookie("token", cookieOptions);
+  res.status(200).json({ message: "Logout successful" });
 };
 
 // Get user profile
 export const getUserProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    if (!userId) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
+    // Directly call repository for data retrieval
+    const user = await userRepository.findProfileById(userId);
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        createdAt: true,
-        farmerProfile: {
-          select: {
-            id: true,
-            farmName: true,
-            address: true,
-            city: true,
-          },
-        },
-      },
-    });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      res.status(404).json({ message: "User not found" });
-      return;
-    }
-
-    res.status(200).json({
-      message: "User profile retrieved successfully",
-      user,
-    });
+    res.status(200).json({ message: "Profile retrieved", user });
   } catch (error) {
     console.error("Get profile error:", error);
     res.status(500).json({ message: "Internal server error" });
